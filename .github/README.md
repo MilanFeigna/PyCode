@@ -37,7 +37,7 @@
 ### Requirements
 - **Python 3.10+** (Tkinter included)
 - Optional dependencies for icon rasterization and PDF export:
-  
+
 ```bash
 pip install pillow reportlab
 ```
