@@ -4,12 +4,6 @@
 
 ---
 
-### Current Update
-
-`PyCode v.6.95`
-
----
-
 ## Features
 
 ### Editor
@@ -38,27 +32,6 @@
 
 ---
 
-## Main Keyboard Shortcuts
-
-| Action | Shortcut |
-| :--- | :--- |
-| Run | `Ctrl + R` |
-| Stop | `Ctrl + Shift + X` |
-| Debug | `Ctrl + Alt + D` |
-| Toggle Breakpoint | `Ctrl + Alt + B` |
-| Run Selection / Current Line | `Ctrl + Shift + Enter` / `Ctrl + Enter` |
-| Save / Save As | `Ctrl + S` / `Ctrl + Shift + S` |
-| Open / New File | `Ctrl + O` / `Ctrl + N` |
-| Search / Next Match | `Ctrl + F` / `Ctrl + G` |
-| Go to Line | `Ctrl + L` |
-| Comment / Uncomment | `Ctrl + /` |
-| Variables Tool | `Ctrl + Shift + V` |
-| Color Tool | `Ctrl + K` |
-| Integrated Terminal | `Ctrl + T` |
-| Settings / All Shortcuts | `Ctrl + ,` / `Ctrl + !` |
-
----
-
 ## Getting Started
 
 ### Requirements
@@ -76,6 +49,10 @@ python PyCode.py
 ```
 
 ---
+
+## Current Update
+
+PyCode Version: `v.6.95`
 
 ## Code Signing
 
