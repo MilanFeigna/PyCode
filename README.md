@@ -38,7 +38,7 @@
 
 ---
 
-## Keyboard Shortcuts
+## Main Keyboard Shortcuts
 
 | Action | Shortcut |
 | :--- | :--- |
