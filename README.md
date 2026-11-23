@@ -75,6 +75,10 @@ python pycode.py
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
+## Code Signing
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
 ## Author
 
 **Milan Feigna**
