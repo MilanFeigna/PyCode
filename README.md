@@ -66,19 +66,19 @@
 ```bash
 git clone https://github.com
 cd PyCode
-python pycode.py
+python PyCode.py
 ```
 
 ---
-
-## License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ## Code Signing
 
 Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
 
+## License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
 ## Author
 
-**Milan Feigna**
+Developed by **Milan Feigna**, with AI assistance.
