@@ -2,6 +2,8 @@
 
 **PyCode** is a lightweight desktop Python IDE built with Python and Tkinter. It combines a responsive code editor, a visual step-by-step debugger, a live variable inspector, and integrated consoles in a clean, high-DPI interface.
 
+![](../PyCode_Bannier.png)
+
 ---
 
 ## Features
