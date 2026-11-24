@@ -32,7 +32,7 @@
 - **Integrated Terminal (`Ctrl+T`):** Built-in system shell with command history and syntax coloring.
 - **Color Tool (`Ctrl+K`):** Live HEX and RGB color converter.
 
-![](../.github/visuals/PyCode_visuals_tools.png)
+![](../.github/visuals/PyCode_tools_visual.png)
 
 ### Interface
 - **Themes:** Dark (`#0`), Light (`#F`), and System (`#S`) modes.
