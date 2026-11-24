@@ -2,7 +2,7 @@
 
 **PyCode** is a lightweight desktop Python IDE built with Python and Tkinter. It combines a responsive code editor, a visual step-by-step debugger, a live variable inspector, and integrated consoles in a clean, high-DPI interface.
 
-![](../PyCode_Bannier.png)
+![](../.github/visuals/PyCode_Bannier.png)
 
 ---
 
@@ -14,6 +14,10 @@
 - **Editing Helpers:** Auto-closing brackets and quotes, line commenting (`Ctrl+/`), quick colon + newline (`Ctrl+:`), symbol occurrence highlighting, and matching bracket indicators.
 - **Navigation & Search:** Live search bar with match counter (`Ctrl+F`), breadcrumbs (`File → Class → Function → Line`), and go-to-line (`Ctrl+L`).
 - **Large File Support:** Background tokenization and viewport-based rendering to keep large scripts smooth.
+
+<p align="center">
+  <img src="../.github/visuals/PyCode_visuals_window.png" />
+</p>
 
 ### Debugger
 - **Breakpoints:** Toggle breakpoints directly from the editor gutter or with `Ctrl+Alt+B`.
@@ -27,6 +31,8 @@
 - **Variables Tool (`Ctrl+Shift+V`):** Real-time table of variables, types, container lengths, and values during execution, with search, type filtering, and export to `.pdf`, `.xlsx`, or `.txt`.
 - **Integrated Terminal (`Ctrl+T`):** Built-in system shell with command history and syntax coloring.
 - **Color Tool (`Ctrl+K`):** Live HEX and RGB color converter.
+
+![](../.github/visuals/PyCode_visuals.png)
 
 ### Interface
 - **Themes:** Dark (`#0`), Light (`#F`), and System (`#S`) modes.
