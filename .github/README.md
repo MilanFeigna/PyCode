@@ -1,4 +1,4 @@
-# PyCode (Python editor by Milan Feigna) v.6.95
+# PyCode (Python editor by Milan Feigna) v.6.97
 
 **PyCode** is a lightweight desktop Python IDE built with Python and Tkinter. It combines a responsive code editor, a visual step-by-step debugger, a live variable inspector, and integrated consoles in a clean, high-DPI interface.
 
@@ -52,7 +52,7 @@ pip install pillow reportlab
 
 ### Run from Source
 ```bash
-git clone https://github.com
+git clone https://github.com/MilanFeigna/PyCode.git
 cd PyCode
 python PyCode.py
 ```
@@ -61,7 +61,7 @@ python PyCode.py
 
 ## Current Update
 
-PyCode Version: `v.6.95`
+PyCode Version: `v.6.97`
 
 ## Code Signing
 
