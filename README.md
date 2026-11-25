@@ -2,7 +2,7 @@
 
 **PyCode** is a lightweight desktop Python IDE built with Python and Tkinter. It combines a responsive code editor, a visual step-by-step debugger, a live variable inspector, and integrated consoles in a clean, high-DPI interface.
 
-![](../.github/visuals/PyCode_Bannier.png)
+![](.github/visuals/PyCode_Bannier.png)
 
 ---
 
@@ -16,7 +16,7 @@
 - **Large File Support:** Background tokenization and viewport-based rendering to keep large scripts smooth.
 
 <p align="center">
-  <img src="../.github/visuals/PyCode_visuals_window.png" />
+  <img src=".github/visuals/PyCode_visuals_window.png" />
 </p>
 
 ### Debugger
@@ -32,7 +32,7 @@
 - **Integrated Terminal (`Ctrl+T`):** Built-in system shell with command history and syntax coloring.
 - **Color Tool (`Ctrl+K`):** Live HEX and RGB color converter.
 
-![](../.github/visuals/PyCode_tools_visual.png)
+![](.github/visuals/PyCode_tools_visual.png)
 
 ### Interface
 - **Themes:** Dark (`#0`), Light (`#F`), and System (`#S`) modes.
