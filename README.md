@@ -1,4 +1,4 @@
-# PyCode
+# PyCode Editor
 
 <p align="center">
   <strong>A modern desktop Python Editor</strong><br />
