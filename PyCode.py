@@ -1,3 +1,4 @@
+
 # >>> REQUIRED INSTRUCTIONS FOR ANYONE OR ANY AI MODIFYING THIS FILE <<<
 # BEFORE RETURNING THE FILE AFTER EVERY CODE CHANGE:
 #   1. Update the version number: increment the minor component of
@@ -52,10 +53,9 @@ tk.Misc.winfo_containing = _safe_winfo_containing
 
 # Release notes
 RELEASE_NOTES = """\
-v.6.95
-- Refined the Debug Tool status banner, equal-width step cells, colors and tooltip placement.
-- Synchronized the Debug Tool Debug button with the main editor button.
-- Improved the Python availability indicator border and removed its tooltip.
+v.6.97
+- Keep the caret on the opening line when Return is pressed inside any empty auto-pair.
+- Move the matching closing character to the following line without creating an empty inner line.
 """
 
 _KNOWN_NAMES_LOCK = threading.RLock()
@@ -471,27 +471,40 @@ _PYCODE_ORIGINAL_HELP = getattr(builtins, "help", None)
 
 
 def _pycode_help(*args, **kwargs):
+    """Render help through the standard interactive pydoc helper.
+
+    This is the formatter used by Python's built-in help() and therefore keeps
+    the same signatures, docstrings and module/class/function headings for
+    functions defined in the user's live execution namespace.
+    """
     import pydoc
 
-    if not args and not kwargs:
+    has_target = bool(args) or "object" in kwargs
+    if not has_target:
         print("Python help: use help(object), help(function), help(module), or help('keyword').")
         print("Example: help(print)  |  help(random.randint)  |  help('for')")
         return None
 
     target = args[0] if args else kwargs.get("object")
-    if target is None:
-        if callable(_PYCODE_ORIGINAL_HELP):
-            return _PYCODE_ORIGINAL_HELP(*args, **kwargs)
-        return pydoc.help(*args, **kwargs)
-
-    documentation = pydoc.render_doc(target, renderer=pydoc.plaintext)
-    documentation = str(documentation).replace("\b", "")
-    if documentation:
-        sys.stdout.write(documentation.rstrip("\n") + "\n")
+    output = sys.stdout
+    try:
+        helper = pydoc.Helper(input=io.StringIO(), output=output)
+        helper.help(target)
         try:
-            sys.stdout.flush()
+            output.flush()
         except Exception:
             pass
+    except Exception:
+        # Preserve a useful fallback for unusual proxy objects whose __repr__
+        # or documentation hooks raise while pydoc is formatting them.
+        documentation = pydoc.render_doc(target, renderer=pydoc.plaintext)
+        documentation = str(documentation).replace("\b", "")
+        if documentation:
+            output.write(documentation.rstrip("\n") + "\n")
+            try:
+                output.flush()
+            except Exception:
+                pass
     return None
 
 
@@ -3813,15 +3826,22 @@ class _SearchEntryPlaceholder:
 
 
 def create_search_ghost(master, text, bg=None):
-    """Create only the compact search icon; placeholder text lives in its Entry."""
+    """Create a DPI-aware, optically centered search icon beside its Entry."""
     bg = bg or COLORS["info_bg"]
-    frame = tk.Frame(master, bg=bg, bd=0, highlightthickness=0, cursor="xterm")
+    frame = tk.Frame(
+        master, bg=bg, bd=0, highlightthickness=0, cursor="xterm",
+        width=ui_px(16),
+    )
+    # Do not let the font's ascent/descent box decide the gutter width or its
+    # vertical position. The frame expands to the Entry height; the glyph is
+    # rasterized into a square and centered in the actual physical pixel area.
+    frame.pack_propagate(False)
     glyph = material_element_symbol(
         "search.placeholder", fallback_name=ICON_CONFIG["search_fields"]["placeholder"]
     )
     if glyph:
         icon_label = create_material_icon_label(
-            frame, glyph, bg, COLORS["info_text"], cursor="xterm",
+            frame, glyph, bg, COLORS["info_text"], cursor="xterm", raster=True,
         )
     else:
         icon_label = tk.Label(
@@ -3830,7 +3850,29 @@ def create_search_ghost(master, text, bg=None):
             bd=0, highlightthickness=0, padx=0, pady=0,
             anchor="center", justify="center", cursor="xterm",
         )
-    icon_label.pack(side="left", padx=0, pady=0, anchor="center")
+
+    def center_icon(_event=None):
+        try:
+            width = max(1, int(frame.winfo_width()))
+            height = max(1, int(frame.winfo_height()))
+            # Keep the optical box proportional to the DPI while respecting
+            # short Entry heights and the real height available after padding.
+            box = max(1, min(int(ui_px(13)), width, max(1, height - int(ui_px(2)))))
+            enable_raster = getattr(icon_label, "enable_raster", None)
+            if callable(enable_raster):
+                enable_raster(box)
+            icon_label.place(
+                relx=0.5, rely=0.5, anchor="center",
+                width=_dpi_px_from_current_pixels(box),
+                height=_dpi_px_from_current_pixels(box),
+            )
+            if hasattr(icon_label, "tkraise"):
+                icon_label.tkraise()
+        except (tk.TclError, AttributeError, TypeError, ValueError):
+            pass
+
+    frame.bind("<Configure>", center_icon, add="+")
+    frame.after_idle(center_icon)
     # The Entry itself renders the ghost, so Tk positions its insertion cursor
     # in front of the hint and uses identical font metrics for both text states.
     return frame, icon_label, None
@@ -4613,7 +4655,7 @@ ACTIVE_THEME = resolve_theme(THEME_PREFERENCE)
 IS_LIGHT_THEME = ACTIVE_THEME != THEME_DARK
 COLORS = build_palette(ACTIVE_THEME)
 
-PYCODE_VERSION = "6.95"
+PYCODE_VERSION = "6.97"
 VERSION = f"v.{PYCODE_VERSION}"
 FONT_MAIN = ("Cascadia Mono", 11, "normal", "roman")
 FONT_CONSOLE = ("Cascadia Mono", 10, "normal", "roman")
@@ -4791,7 +4833,7 @@ def tooltip_create_rich_text(parent, text, *, background=None, justify="left"):
         parent, bg=bg, fg=COLORS["tooltip_fg"], font=_TOOLTIP_TEXT_FONT,
         width=1, height=1, wrap="word",
         relief="flat", borderwidth=0, highlightthickness=0,
-        padx=ui_px(6), pady=0, spacing1=0, spacing2=0, spacing3=0,
+        padx=ui_px(4), pady=0, spacing1=0, spacing2=0, spacing3=0,
         cursor="arrow", takefocus=0, exportselection=False,
     )
     tooltip_update_rich_text(text_widget, text, background=bg, justify=justify)
@@ -4821,9 +4863,9 @@ def tooltip_rich_text_pady(widget):
     Tk centers the ascent+descent box, not the glyph bodies. The offset between the
     two comes from the real font file (same measure as the launcher titles), so the
     text reads vertically centered in the frame whatever the DPI. The padding is
-    kept small (2 px each side before the optical correction).
+    kept minimal (1 px each side before the optical correction).
     """
-    base = int(ui_px(2))
+    base = int(ui_px(1))
     try:
         lift = int(_title_ink_lift_px(widget, _TOOLTIP_TEXT_FONT))
     except Exception:
@@ -9031,6 +9073,10 @@ class ModernEditor(tk.Tk):
         self._file_open_result_queue = queue.Queue()
         self._clipboard_replace_identity = None
         self._clipboard_replace_modal = None
+        self._external_file_check_after_id = None
+        self._external_file_watch_path = None
+        self._external_file_disk_stamp = None
+        self._external_file_change_modal = None
         self._save_temporarily_locked = False
         self._large_visible_syntax_after_id = None
         self._large_visible_syntax_generation = 0
@@ -9176,6 +9222,8 @@ class ModernEditor(tk.Tk):
         self.input_queue = multiprocessing.Queue()
         self.check_queue_loop()
         self._schedule_file_open_result_poll()
+        self._record_external_file_stamp()
+        self._schedule_external_file_check()
         self.protocol("WM_DELETE_WINDOW", self._shutdown_application)
         try:
             self.after_idle(lambda: self._install_toplevel_mouse_activate_hook(self))
@@ -14246,7 +14294,7 @@ Windows-style maximize""",
         except tk.TclError:
             pass
 
-    _TOOLTIP_TEXT_GAP = 5
+    _TOOLTIP_TEXT_GAP = 3
 
     @staticmethod
     def _tooltip_autohide_delay_ms(text):
@@ -14398,7 +14446,7 @@ Windows-style maximize""",
             pass
 
     def _tooltip_anchor_y_below(self, widget):
-        """Screen y of a cursor-following tooltip: always 5 px under the hovered text.
+        """Screen y of a cursor-following tooltip: a compact gap under hovered text.
 
         Only x follows the pointer; y is tied to the hovered widget, so the gap to its
         text no longer depends on where inside the widget the pointer entered.
@@ -35086,9 +35134,68 @@ Live updates during Run or console input"""),
             return "break"
         return "break"
 
+    def _keep_empty_pair_on_opening_line(self):
+        """Put the closer on the next line without moving the caret off the opener line."""
+        if not getattr(self, "auto_pairing_enabled", False):
+            return False
+        text = self.text
+        try:
+            if text.tag_ranges("sel"):
+                return False
+
+            cursor = text.index(tk.INSERT)
+            before_three = text.get(f"{cursor}-3c", cursor)
+            after_three = text.get(cursor, f"{cursor}+3c")
+            is_triple_quote = (
+                before_three in ('"' * 3, "'" * 3)
+                and before_three == after_three
+            )
+
+            if not is_triple_quote:
+                opening_char = text.get(f"{cursor}-1c", cursor)
+                closing_char = text.get(cursor, f"{cursor}+1c")
+                pairs = getattr(self, "auto_pairs", None) or {
+                    "(": ")", "[": "]", "{": "}", '"': '"', "'": "'",
+                }
+                if pairs.get(opening_char) != closing_char:
+                    return False
+
+            context = self._cursor_context()
+            if context == "comment":
+                return False
+            if not is_triple_quote:
+                opening_char = text.get(f"{cursor}-1c", cursor)
+                fexpr_context = self._cursor_fstring_expression_context(cursor)
+                # Quote pairs are valid targets even though the caret is inside
+                # their string token. Brackets inside an ordinary string are not.
+                if (opening_char not in ('"', "'") and context == "string"
+                        and fexpr_context is None):
+                    return False
+
+            # Only one line is added: the closer moves below the opener, while
+            # the insertion mark is restored to the end of the opening token.
+            if self._current_editor_line_count() + 1 > MAX_EDITOR_LINES:
+                self._show_editor_line_limit_toast()
+                return True
+
+            line_prefix = text.get(f"{cursor} linestart", cursor)
+            match = re.match(r"^[ \t]*", line_prefix)
+            current_indent = match.group(0) if match else ""
+            insertion = "\n" + current_indent
+            text.insert(cursor, insertion)
+            text.mark_set(tk.INSERT, cursor)
+            text.see(tk.INSERT)
+            self._mark_editor_edit(
+                edit_char_delta=len(insertion), edit_line_delta=1,
+            )
+            self._commit_editor_structure_change()
+            return True
+        except (tk.TclError, ValueError, TypeError):
+            return False
+
     def _exit_empty_parentheses(self, e):
-        """Enter / Space / Tab with the caret inside empty "()" jumps out of them."""
-        if e.keysym not in ("Return", "space", "Tab"):
+        """Space / Tab with the caret inside an empty "()" jumps out of it."""
+        if e.keysym not in ("space", "Tab"):
             return False
         state = int(getattr(e, "state", 0) or 0)
         if (state & 0x0001) or (state & 0x0004) or self._key_state_has_alt(state):
@@ -35226,6 +35333,8 @@ Live updates during Run or console input"""),
         if e.keysym == "Return":
             if self._current_editor_line_count() >= MAX_EDITOR_LINES:
                 self._show_editor_line_limit_toast()
+                return "break"
+            if self._keep_empty_pair_on_opening_line():
                 return "break"
 
             current_line_text = self.text.get("insert linestart", "insert")
@@ -40667,21 +40776,32 @@ Live updates during Run or console input"""),
         except (tk.TclError, AttributeError, TypeError, ValueError):
             ready = False
 
-        # Keep the green/red meaning with darker fills and a lighter tinted
-        # foreground so the state remains readable without looking luminous.
         accent_role = "run_green" if ready else "stop_red"
         base_accent = COLORS.get(accent_role, COLORS["syn_error"])
-        accent = color_mix(base_accent, "#000000", 0.34)
-        light_edge = color_mix(accent, "#FFFFFF", 0.30)
-        light_text = color_mix(base_accent, "#FFFFFF", 0.72)
         try:
-            outer.configure(bg=COLORS["modal_outline"])
-            border.configure(bg=light_edge)
-            surface.configure(bg=accent)
+            if IS_LIGHT_THEME:
+                # In the light palette the badge should sit on the console's
+                # normal surface; the status is carried by a quiet colored edge
+                # and readable text, not by a saturated filled rectangle.
+                normal_bg = COLORS.get("console_bg", COLORS["bg_main"])
+                edge = color_mix(base_accent, normal_bg, 0.54)
+                status_text = color_mix(base_accent, "#000000", 0.30)
+                outer.configure(bg=normal_bg)
+                border.configure(bg=edge)
+                surface.configure(bg=normal_bg)
+                label_bg = normal_bg
+            else:
+                accent = color_mix(base_accent, "#000000", 0.34)
+                edge = color_mix(accent, "#FFFFFF", 0.30)
+                status_text = color_mix(base_accent, "#FFFFFF", 0.72)
+                outer.configure(bg=COLORS["modal_outline"])
+                border.configure(bg=edge)
+                surface.configure(bg=accent)
+                label_bg = accent
             label.configure(
                 text=("Python available" if ready else "Python unavailable"),
-                bg=accent,
-                fg=light_text,
+                bg=label_bg,
+                fg=status_text,
                 anchor="center",
                 justify="center",
                 pady=ui_px(1),
@@ -41311,6 +41431,197 @@ Live updates during Run or console input"""),
                 pass
             raise
 
+    def _external_file_stamp(self, path=None):
+        """Return a low-cost identity/version tuple for the currently opened file."""
+        path = self.file_path if path is None else path
+        if not path:
+            return None
+        try:
+            info = os.stat(os.path.abspath(path))
+            return (
+                int(getattr(info, "st_mtime_ns", int(info.st_mtime * 1_000_000_000))),
+                int(info.st_size),
+                int(getattr(info, "st_ino", 0) or 0),
+                int(getattr(info, "st_dev", 0) or 0),
+            )
+        except (OSError, TypeError, ValueError):
+            return None
+
+    def _record_external_file_stamp(self):
+        path = getattr(self, "file_path", None)
+        if path:
+            try:
+                self._external_file_watch_path = os.path.normcase(os.path.abspath(path))
+            except (OSError, TypeError, ValueError):
+                self._external_file_watch_path = None
+        else:
+            self._external_file_watch_path = None
+        self._external_file_disk_stamp = self._external_file_stamp(path)
+
+    def _schedule_external_file_check(self, delay=1500):
+        if getattr(self, "_shutting_down", False):
+            return
+        if getattr(self, "_external_file_check_after_id", None) is not None:
+            return
+        try:
+            self._external_file_check_after_id = self.after(
+                max(250, int(delay)), self._check_external_file_change,
+            )
+        except (tk.TclError, TypeError, ValueError):
+            self._external_file_check_after_id = None
+
+    def _check_external_file_change(self):
+        self._external_file_check_after_id = None
+        if getattr(self, "_shutting_down", False):
+            return
+        self._schedule_external_file_check()
+
+        path = getattr(self, "file_path", None)
+        if not path:
+            self._external_file_watch_path = None
+            self._external_file_disk_stamp = None
+            return
+        if (getattr(self, "_file_open_in_progress", False)
+                or getattr(self, "_large_paste_in_progress", False)
+                or getattr(self, "_native_file_dialog_open", False)
+                or getattr(self, "_save_temporarily_locked", False)
+                or getattr(self, "_modal_dim_active", False)):
+            return
+        if getattr(self, "_external_file_change_modal", None) is not None:
+            try:
+                if self._external_file_change_modal.winfo_exists():
+                    return
+            except tk.TclError:
+                pass
+            self._external_file_change_modal = None
+
+        try:
+            normalized_path = os.path.normcase(os.path.abspath(path))
+        except (OSError, TypeError, ValueError):
+            return
+        if normalized_path != getattr(self, "_external_file_watch_path", None):
+            self._record_external_file_stamp()
+            return
+
+        current_stamp = self._external_file_stamp(path)
+        if current_stamp == getattr(self, "_external_file_disk_stamp", None):
+            return
+        self._show_external_file_change_modal(path)
+
+    def _show_external_file_change_modal(self, path):
+        if self._shutting_down or getattr(self, "_external_file_change_modal", None) is not None:
+            return
+        exists_on_disk = bool(path and os.path.isfile(path))
+        unsaved = self._document_has_unsaved_changes()
+        try:
+            outer, inner = create_stable_modal_shell(
+                self, content_padx=20, content_pady=20, fixed_width=370,
+            )
+        except (tk.TclError, TypeError, ValueError):
+            return
+        self._external_file_change_modal = outer
+        self._active_modal_widget = outer
+        try:
+            outer.grab_set()
+            focus_without_raise(outer)
+        except tk.TclError:
+            pass
+
+        ModalTitle(inner, "File Changed Externally").pack(pady=(4, 8))
+        create_modal_separator(inner, pady=(0, 10))
+        filename = os.path.basename(path) if path else self.file_name
+        message = (
+            f"The file '{filename}' has changed on disk since it was opened."
+            if exists_on_disk else
+            f"The file '{filename}' is no longer available at its original location."
+        )
+        tk.Label(
+            inner, text=message,
+            font=("Cascadia Mono", 10, "normal", "roman"),
+            bg=COLORS["bg_main"], fg=COLORS["info_text"],
+            justify="center", anchor="center", wraplength=ui_px(310),
+        ).pack(fill="x", pady=(0, 8))
+        if unsaved:
+            warning = "Reloading will discard the changes currently in the editor."
+            warning_color = COLORS.get("syn_error", COLORS["stop_red"])
+        elif exists_on_disk:
+            warning = "Reload the latest version from disk, or keep the current editor contents."
+            warning_color = COLORS["secondary_text"]
+        else:
+            warning = "Save the current contents under a new name, or keep editing this copy."
+            warning_color = COLORS["secondary_text"]
+        tk.Label(
+            inner, text=warning,
+            font=("Cascadia Mono", 9, "normal", "roman"),
+            bg=COLORS["bg_main"], fg=warning_color,
+            justify="center", anchor="center", wraplength=ui_px(310),
+        ).pack(fill="x", pady=(0, 10))
+        create_modal_separator(inner, pady=(0, 10))
+
+        def close_modal(restore_focus=True, accept_disk_version=True):
+            if getattr(self, "_external_file_change_modal", None) is not outer:
+                return
+            if accept_disk_version:
+                # A dismissal means keep editing this in-memory copy. Advance the
+                # baseline so the same external write does not reopen the popup.
+                self._record_external_file_stamp()
+            try:
+                outer.grab_release()
+            except tk.TclError:
+                pass
+            try:
+                outer.destroy()
+            except tk.TclError:
+                pass
+            self._external_file_change_modal = None
+            self._restore_modal_background()
+            if restore_focus:
+                try:
+                    self.after_idle(self.text.focus_set)
+                except tk.TclError:
+                    pass
+
+        outer._pycode_close_callback = close_modal
+        outer.bind("<Escape>", lambda _e: (close_modal(), "break")[1], add="+")
+        try:
+            outer.protocol("WM_DELETE_WINDOW", close_modal)
+        except (tk.TclError, AttributeError):
+            # The normal stable modal shell is an embedded Frame, not a Toplevel.
+            pass
+
+        buttons = tk.Frame(inner, bg=COLORS["bg_main"])
+        buttons.pack(pady=(2, 2))
+        if exists_on_disk:
+            def reload_from_disk():
+                close_modal(restore_focus=False, accept_disk_version=False)
+                try:
+                    self._start_file_open(path)
+                except Exception as exc:
+                    self.show_toast(f"Reload Error: {exc}", color=COLORS["syn_error"])
+
+            HoverButton(
+                buttons, text="Reload File", command=reload_from_disk,
+                bg=COLORS["run_green"], fg=COLORS["on_accent"],
+                hbg=COLORS["run_green"], hfg=COLORS["on_accent"], width=12,
+            ).pack(side="left", padx=4)
+        else:
+            def save_missing_file_as():
+                close_modal(restore_focus=False)
+                self.save_as_file()
+
+            HoverButton(
+                buttons, text="Save As...", command=save_missing_file_as,
+                bg=COLORS["run_green"], fg=COLORS["on_accent"],
+                hbg=COLORS["run_green"], hfg=COLORS["on_accent"], width=12,
+            ).pack(side="left", padx=4)
+        HoverButton(
+            buttons, text="Keep Editing", command=close_modal,
+            bg=COLORS["surface_dark"], fg=COLORS["fg_strong"],
+            hbg=COLORS["surface_hover"], hfg=COLORS["fg_strong"], width=12,
+        ).pack(side="left", padx=4)
+        bind_modal_escape(outer, close_modal)
+        outer.update_idletasks()
+
     def save_file(self):
         if self._shutting_down:
             return
@@ -41331,6 +41642,7 @@ Live updates during Run or console input"""),
                 self.file_path = target_path
             self.file_name = os.path.basename(self.file_path)
             self.text.edit_modified(False)
+            self._record_external_file_stamp()
             self.update_info_bar()
             self.update_save_button_state()
             self.show_toast("File Renamed & Saved" if renamed else "File Saved")
@@ -41416,6 +41728,7 @@ Live updates during Run or console input"""),
                 self.file_path = path
                 self.file_name = safe_name
                 self.text.edit_modified(False)
+                self._record_external_file_stamp()
                 self.update_info_bar()
                 self.update_save_button_state()
                 self.show_toast("File Saved")
@@ -42901,6 +43214,8 @@ Live updates during Run or console input"""),
                     if clipboard_identity is not None:
                         self.file_path, self.file_name = clipboard_identity
                         self._clipboard_replace_identity = None
+                    else:
+                        self._record_external_file_stamp()
                     self._reset_editor_undo_redo()
                     self._synchronize_editor_indent_layout(full=True)
                     self._large_active_string_range = None
@@ -50325,6 +50640,7 @@ Live updates during Run or console input"""),
         for attr in ("_startup_veil_after_id", "_editor_height_calibration_after_id", "_editor_visual_refresh_after_id", "_syntax_refresh_after_id",
                      "_ghost_refresh_after_id", "_console_syntax_after_id",
                      "_dpi_recheck_after_id", "_line_entry_flash_after_id",
+                     "_external_file_check_after_id",
                      "_console_render_after_id", "_file_open_poll_after_id",
                      "_file_open_insert_after_id", "_large_visible_syntax_after_id",
                      "_large_wheel_after_id", "_large_background_after_id", "_search_realign_after_id",
@@ -50365,7 +50681,8 @@ Live updates during Run or console input"""),
             except tk.TclError:
                 pass
             self._editor_history_resync_after_id = None
-        for attr in ("_shutdown_prompt", "_new_file_modal", "_file_open_modal"):
+        for attr in ("_shutdown_prompt", "_new_file_modal", "_file_open_modal",
+                     "_external_file_change_modal"):
             modal = getattr(self, attr, None)
             if modal is not None:
                 try:
